@@ -34,6 +34,11 @@ class ListItemsDao extends DatabaseAccessor<AppDatabase>
   Future<void> deleteItemsForNote(String noteId) =>
       (delete(listItems)..where((i) => i.noteId.equals(noteId))).go();
 
+  Future<List<ListItem>> searchItemsByContent(String query) {
+    final q = '%$query%';
+    return (select(listItems)..where((i) => i.content.like(q))).get();
+  }
+
   Future<int> getMaxPositionInGroup(String noteId, bool isChecked) async {
     final result = await customSelect(
       'SELECT COALESCE(MAX(position), -1) as max_pos FROM list_items '
