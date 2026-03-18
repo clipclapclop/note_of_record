@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +23,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   late final TextEditingController _addItemCtrl;
   final FocusNode _addItemFocus = FocusNode();
   String? _lastAddedItemId;
+  Timer? _titleDebounce;
 
   @override
   void initState() {
@@ -36,6 +39,11 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
     if (note != null && mounted) {
       _titleCtrl.text = note.title ?? '';
     }
+  }
+
+  void _onTitleChanged() {
+    _titleDebounce?.cancel();
+    _titleDebounce = Timer(const Duration(milliseconds: 500), _saveTitle);
   }
 
   Future<void> _saveTitle() async {
@@ -156,7 +164,12 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
 
   @override
   void dispose() {
+    _titleDebounce?.cancel();
     _saveTitle();
+    // Commit any unsaved "add item" text
+    if (_addItemCtrl.text.isNotEmpty) {
+      _addItem();
+    }
     _titleCtrl.dispose();
     _addItemCtrl.dispose();
     _addItemFocus.dispose();
@@ -197,7 +210,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
                       hintText: 'Title',
                       border: InputBorder.none,
                     ),
-                    onChanged: (_) => _saveTitle(),
+                    onChanged: (_) => _onTitleChanged(),
                     textCapitalization: TextCapitalization.sentences,
                   ),
                 ),
