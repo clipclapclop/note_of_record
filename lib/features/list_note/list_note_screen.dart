@@ -30,7 +30,14 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
     super.initState();
     _titleCtrl = TextEditingController();
     _addItemCtrl = TextEditingController();
+    _addItemFocus.addListener(_onAddItemFocusChange);
     _loadTitle();
+  }
+
+  void _onAddItemFocusChange() {
+    if (!_addItemFocus.hasFocus && _addItemCtrl.text.isNotEmpty) {
+      _addItem();
+    }
   }
 
   Future<void> _loadTitle() async {
@@ -165,13 +172,21 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   @override
   void dispose() {
     _titleDebounce?.cancel();
-    _saveTitle();
-    // Commit any unsaved "add item" text
-    if (_addItemCtrl.text.isNotEmpty) {
-      _addItem();
+    final title = _titleCtrl.text.trim();
+    final pendingItem = _addItemCtrl.text.trim();
+    final existingItems = ref.read(listItemsProvider(widget.noteId)).valueOrNull ?? [];
+    final isEmpty = title.isEmpty && pendingItem.isEmpty && existingItems.isEmpty;
+    if (isEmpty) {
+      ref.read(databaseProvider).notesDao.deleteNote(widget.noteId);
+    } else {
+      _saveTitle();
+      if (_addItemCtrl.text.isNotEmpty) {
+        _addItem();
+      }
     }
     _titleCtrl.dispose();
     _addItemCtrl.dispose();
+    _addItemFocus.removeListener(_onAddItemFocusChange);
     _addItemFocus.dispose();
     super.dispose();
   }
@@ -197,105 +212,135 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
           final checked = allItems.where((i) => i.isChecked).toList()
             ..sort((a, b) => a.position.compareTo(b.position));
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                  child: TextField(
-                    controller: _titleCtrl,
-                    style: Theme.of(context).textTheme.titleLarge,
-                    decoration: const InputDecoration(
-                      hintText: 'Title',
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (_) => _onTitleChanged(),
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                ),
-
-                // Unchecked items
-                if (unchecked.isNotEmpty)
-                  ReorderableListView(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    buildDefaultDragHandles: false,
-                    onReorder: (o, n) => _reorderGroup(unchecked, o, n),
+          return LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (var i = 0; i < unchecked.length; i++)
-                        ListItemTile(
-                          key: ValueKey(unchecked[i].id),
-                          item: unchecked[i],
-                          dragIndex: i,
-                          autofocus: unchecked[i].id == _lastAddedItemId,
-                          onCheckedChanged: (v) => v
-                              ? _checkItem(unchecked[i])
-                              : _uncheckItem(unchecked[i]),
-                          onContentChanged: (s) =>
-                              _updateContent(unchecked[i].id, s),
-                          onDelete: () => _deleteItem(unchecked[i].id),
-                        ),
-                    ],
-                  ),
-
-                // Add item row
-                ListTile(
-                  leading: const Icon(Icons.add),
-                  title: TextField(
-                    controller: _addItemCtrl,
-                    focusNode: _addItemFocus,
-                    decoration: const InputDecoration(
-                      hintText: 'Add item',
-                      border: InputBorder.none,
-                    ),
-                    textCapitalization: TextCapitalization.sentences,
-                    onSubmitted: (_) async {
-                      if (_addItemCtrl.text.isNotEmpty) {
-                        await _addItem();
-                      }
-                      _addItemFocus.requestFocus();
-                    },
-                  ),
-                  onTap: () => _addItemFocus.requestFocus(),
-                ),
-
-                // Checked items section
-                if (checked.isNotEmpty) ...[
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Text(
-                      '${checked.length} checked',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                        child: TextField(
+                          controller: _titleCtrl,
+                          style: Theme.of(context).textTheme.titleLarge,
+                          decoration: const InputDecoration(
+                            hintText: 'Title',
+                            border: InputBorder.none,
                           ),
-                    ),
-                  ),
-                  ReorderableListView(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    buildDefaultDragHandles: false,
-                    onReorder: (o, n) => _reorderGroup(checked, o, n),
-                    children: [
-                      for (var i = 0; i < checked.length; i++)
-                        ListItemTile(
-                          key: ValueKey(checked[i].id),
-                          item: checked[i],
-                          dragIndex: i,
-                          onCheckedChanged: (v) => v
-                              ? _checkItem(checked[i])
-                              : _uncheckItem(checked[i]),
-                          onContentChanged: (s) =>
-                              _updateContent(checked[i].id, s),
-                          onDelete: () => _deleteItem(checked[i].id),
+                          onChanged: (_) => _onTitleChanged(),
+                          textCapitalization: TextCapitalization.sentences,
                         ),
+                      ),
+
+                      // Unchecked items
+                      if (unchecked.isNotEmpty)
+                        ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: false,
+                          onReorder: (o, n) => _reorderGroup(unchecked, o, n),
+                          children: [
+                            for (var i = 0; i < unchecked.length; i++)
+                              ListItemTile(
+                                key: ValueKey(unchecked[i].id),
+                                item: unchecked[i],
+                                dragIndex: i,
+                                autofocus: unchecked[i].id == _lastAddedItemId,
+                                onCheckedChanged: (v) => v
+                                    ? _checkItem(unchecked[i])
+                                    : _uncheckItem(unchecked[i]),
+                                onContentChanged: (s) =>
+                                    _updateContent(unchecked[i].id, s),
+                                onDelete: () => _deleteItem(unchecked[i].id),
+                                onSubmitted: () =>
+                                    _addItemFocus.requestFocus(),
+                              ),
+                          ],
+                        ),
+
+                      // Draft item row
+                      GestureDetector(
+                        onTap: () => _addItemFocus.requestFocus(),
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 80),
+                            Expanded(
+                              child: TextField(
+                                controller: _addItemCtrl,
+                                focusNode: _addItemFocus,
+                                decoration: const InputDecoration(
+                                  hintText: 'New item',
+                                  border: InputBorder.none,
+                                ),
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                onSubmitted: (_) async {
+                                  if (_addItemCtrl.text.isNotEmpty) {
+                                    await _addItem();
+                                  }
+                                  _addItemFocus.requestFocus();
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Checked items section
+                      if (checked.isNotEmpty) ...[
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          child: Text(
+                            '${checked.length} checked',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.outline,
+                                ),
+                          ),
+                        ),
+                        ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: false,
+                          onReorder: (o, n) => _reorderGroup(checked, o, n),
+                          children: [
+                            for (var i = 0; i < checked.length; i++)
+                              ListItemTile(
+                                key: ValueKey(checked[i].id),
+                                item: checked[i],
+                                dragIndex: i,
+                                onCheckedChanged: (v) => v
+                                    ? _checkItem(checked[i])
+                                    : _uncheckItem(checked[i]),
+                                onContentChanged: (s) =>
+                                    _updateContent(checked[i].id, s),
+                                onDelete: () => _deleteItem(checked[i].id),
+                                onSubmitted: () =>
+                                    _addItemFocus.requestFocus(),
+                              ),
+                          ],
+                        ),
+                      ],
+
+                      // Tappable fill — focuses draft field when tapping empty space
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _addItemFocus.requestFocus(),
+                          behavior: HitTestBehavior.opaque,
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
                     ],
                   ),
-                ],
-
-                const SizedBox(height: 80),
-              ],
+                ),
+              ),
             ),
           );
         },

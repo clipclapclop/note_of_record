@@ -84,8 +84,13 @@ class _TextNoteScreenState extends ConsumerState<TextNoteScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
-    // Final save on dispose
-    _save();
+    final title = _titleCtrl.text.trim();
+    final body = _bodyCtrl.text.trim();
+    if (title.isEmpty && body.isEmpty) {
+      ref.read(databaseProvider).notesDao.deleteNote(widget.noteId);
+    } else {
+      _save();
+    }
     _titleCtrl.dispose();
     _bodyCtrl.dispose();
     super.dispose();

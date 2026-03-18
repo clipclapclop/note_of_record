@@ -1,4 +1,4 @@
-package com.example.note_of_record
+package com.clipclapclop.noteofrecord
 
 import io.flutter.embedding.android.FlutterActivity
 

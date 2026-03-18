@@ -10,6 +10,7 @@ class ListItemTile extends StatefulWidget {
     required this.onDelete,
     required this.dragIndex,
     this.autofocus = false,
+    this.onSubmitted,
   });
 
   final ListItem item;
@@ -18,6 +19,7 @@ class ListItemTile extends StatefulWidget {
   final VoidCallback onDelete;
   final int dragIndex;
   final bool autofocus;
+  final VoidCallback? onSubmitted;
 
   @override
   State<ListItemTile> createState() => _ListItemTileState();
@@ -53,6 +55,16 @@ class _ListItemTileState extends State<ListItemTile> {
 
     return Row(
       children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: ReorderableDragStartListener(
+            index: widget.dragIndex,
+            child: Icon(
+              Icons.drag_handle,
+              color: theme.colorScheme.outlineVariant,
+            ),
+          ),
+        ),
         Checkbox(
           value: isChecked,
           onChanged: (v) => widget.onCheckedChanged(v ?? false),
@@ -67,15 +79,8 @@ class _ListItemTileState extends State<ListItemTile> {
               color: isChecked ? theme.colorScheme.outline : null,
             ),
             onChanged: widget.onContentChanged,
-            onSubmitted: (_) {}, // handled by parent to add new item
+            onSubmitted: (_) => widget.onSubmitted?.call(),
             textCapitalization: TextCapitalization.sentences,
-          ),
-        ),
-        ReorderableDragStartListener(
-          index: widget.dragIndex,
-          child: Icon(
-            Icons.drag_handle,
-            color: theme.colorScheme.outlineVariant,
           ),
         ),
       ],
