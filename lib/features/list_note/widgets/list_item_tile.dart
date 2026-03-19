@@ -78,6 +78,7 @@ class _ListItemTileState extends State<ListItemTile> {
               decoration: isChecked ? TextDecoration.lineThrough : null,
               color: isChecked ? theme.colorScheme.outline : null,
             ),
+            maxLines: null,
             onChanged: widget.onContentChanged,
             onSubmitted: (_) => widget.onSubmitted?.call(),
             textCapitalization: TextCapitalization.sentences,
