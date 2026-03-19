@@ -47,20 +47,10 @@ class NotesView extends ConsumerWidget {
     }
 
     if (viewMode == ViewMode.grid) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(8),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 0.85,
-        ),
-        itemCount: notes.length,
-        itemBuilder: (_, i) => NoteCard(
-          note: notes[i],
-          onTap: () => onNoteTap(notes[i]),
-          onLongPress: () => onNoteLongPress(notes[i]),
-        ),
+      return _MasonryGrid(
+        notes: notes,
+        onNoteTap: onNoteTap,
+        onNoteLongPress: onNoteLongPress,
       );
     }
 
@@ -68,10 +58,54 @@ class NotesView extends ConsumerWidget {
       padding: const EdgeInsets.all(8),
       itemCount: notes.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => NoteCard(
-        note: notes[i],
-        onTap: () => onNoteTap(notes[i]),
-        onLongPress: () => onNoteLongPress(notes[i]),
+      itemBuilder: (_, i) => ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 300),
+        child: NoteCard(
+          note: notes[i],
+          onTap: () => onNoteTap(notes[i]),
+          onLongPress: () => onNoteLongPress(notes[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class _MasonryGrid extends StatelessWidget {
+  const _MasonryGrid({
+    required this.notes,
+    required this.onNoteTap,
+    required this.onNoteLongPress,
+  });
+
+  final List<Note> notes;
+  final void Function(Note) onNoteTap;
+  final void Function(Note) onNoteLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final left = [for (int i = 0; i < notes.length; i += 2) notes[i]];
+    final right = [for (int i = 1; i < notes.length; i += 2) notes[i]];
+
+    Widget column(List<Note> columnNotes) => Expanded(
+          child: Column(
+            children: [
+              for (final note in columnNotes) ...[
+                NoteCard(
+                  note: note,
+                  onTap: () => onNoteTap(note),
+                  onLongPress: () => onNoteLongPress(note),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [column(left), const SizedBox(width: 8), column(right)],
       ),
     );
   }
