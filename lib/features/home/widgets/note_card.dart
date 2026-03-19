@@ -128,6 +128,7 @@ class _ListNotePreview extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 1),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
                           item.isChecked

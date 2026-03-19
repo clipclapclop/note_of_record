@@ -54,20 +54,25 @@ class _ListItemTileState extends State<ListItemTile> {
     final theme = Theme.of(context);
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: ReorderableDragStartListener(
-            index: widget.dragIndex,
-            child: Icon(
-              Icons.drag_handle,
-              color: theme.colorScheme.outlineVariant,
+        Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: ReorderableDragStartListener(
+                index: widget.dragIndex,
+                child: Icon(
+                  Icons.drag_handle,
+                  color: theme.colorScheme.outlineVariant,
+                ),
+              ),
             ),
-          ),
-        ),
-        Checkbox(
-          value: isChecked,
-          onChanged: (v) => widget.onCheckedChanged(v ?? false),
+            Checkbox(
+              value: isChecked,
+              onChanged: (v) => widget.onCheckedChanged(v ?? false),
+            ),
+          ],
         ),
         Expanded(
           child: TextField(
