@@ -60,7 +60,7 @@ class _ListItemTileState extends State<ListItemTile> {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: ReorderableDragStartListener(
+              child: ReorderableDelayedDragStartListener(
                 index: widget.dragIndex,
                 child: Icon(
                   Icons.drag_handle,
