@@ -5,6 +5,7 @@ import 'package:note_of_record/core/database/app_database.dart';
 import 'package:note_of_record/features/list_note/list_note_screen.dart';
 import 'package:note_of_record/features/search/note_search_delegate.dart';
 import 'package:note_of_record/features/text_note/text_note_screen.dart';
+import 'package:note_of_record/features/settings/settings_screen.dart';
 import 'package:note_of_record/models/sort_mode.dart';
 import 'package:note_of_record/providers/database_provider.dart';
 import 'package:note_of_record/providers/notes_provider.dart';
@@ -119,6 +120,14 @@ class HomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.sort),
             tooltip: 'Sort',
             onPressed: () => _showSortSheet(context, ref, sortMode),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
