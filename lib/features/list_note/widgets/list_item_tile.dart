@@ -53,43 +53,46 @@ class _ListItemTileState extends State<ListItemTile> {
     final isChecked = widget.item.isChecked;
     final theme = Theme.of(context);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: ReorderableDelayedDragStartListener(
-                index: widget.dragIndex,
-                child: Icon(
-                  Icons.drag_handle,
-                  color: theme.colorScheme.outlineVariant,
+    return Material(
+      type: MaterialType.transparency,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: ReorderableDelayedDragStartListener(
+                  index: widget.dragIndex,
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: theme.colorScheme.outlineVariant,
+                  ),
                 ),
               ),
-            ),
-            Checkbox(
-              value: isChecked,
-              onChanged: (v) => widget.onCheckedChanged(v ?? false),
-            ),
-          ],
-        ),
-        Expanded(
-          child: TextField(
-            controller: _ctrl,
-            autofocus: widget.autofocus,
-            decoration: const InputDecoration(border: InputBorder.none),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              decoration: isChecked ? TextDecoration.lineThrough : null,
-              color: isChecked ? theme.colorScheme.outline : null,
-            ),
-            maxLines: null,
-            onChanged: widget.onContentChanged,
-            onSubmitted: (_) => widget.onSubmitted?.call(),
-            textCapitalization: TextCapitalization.sentences,
+              Checkbox(
+                value: isChecked,
+                onChanged: (v) => widget.onCheckedChanged(v ?? false),
+              ),
+            ],
           ),
-        ),
-      ],
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              autofocus: widget.autofocus,
+              decoration: const InputDecoration(border: InputBorder.none),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                decoration: isChecked ? TextDecoration.lineThrough : null,
+                color: isChecked ? theme.colorScheme.outline : null,
+              ),
+              maxLines: null,
+              onChanged: widget.onContentChanged,
+              onSubmitted: (_) => widget.onSubmitted?.call(),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
