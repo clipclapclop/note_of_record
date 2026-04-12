@@ -23,6 +23,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   late final TextEditingController _addItemCtrl;
   final FocusNode _addItemFocus = FocusNode();
   final ScrollController _scrollCtrl = ScrollController();
+  final GlobalKey _draftRowKey = GlobalKey();
   String? _lastAddedItemId;
   Timer? _titleDebounce;
 
@@ -87,11 +88,12 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
     ));
     await _touchNote();
     setState(() => _lastAddedItemId = id);
-    // Scroll to keep the new item and "New item" field visible
+    // Scroll just enough to keep the draft "New item" row visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
+      final ctx = _draftRowKey.currentContext;
+      if (mounted && ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
@@ -272,6 +274,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
                     // Draft item row
                     SliverToBoxAdapter(
                       child: GestureDetector(
+                        key: _draftRowKey,
                         onTap: () => _addItemFocus.requestFocus(),
                         behavior: HitTestBehavior.opaque,
                         child: Row(
