@@ -60,20 +60,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(settingsProvider.notifier).setBackupFolderPath(path);
   }
 
-  Future<void> _pickBackupTime() async {
-    final current = ref.read(settingsProvider).scheduledBackupTime;
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: current ?? const TimeOfDay(hour: 2, minute: 0),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-        child: child!,
-      ),
-    );
-    if (picked == null || !mounted) return;
-    await ref.read(settingsProvider.notifier).setScheduledBackupTime(picked);
-  }
-
   Future<void> _backupNow() async {
     final folderPath = ref.read(settingsProvider).backupFolderPath;
     if (folderPath == null || _dbPath == null) return;
@@ -155,19 +141,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  String _formatTime(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$hour:$minute $period';
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final folderSet = settings.backupFolderPath != null;
-    final timeSet = settings.scheduledBackupTime != null;
-    final canAutoBackup = folderSet && timeSet;
     final lastBackup = settings.lastBackupTime;
     final lastBackupText = lastBackup != null
         ? DateFormat('MMM d, yyyy  h:mm a').format(lastBackup)
@@ -191,25 +168,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Text(folderSet ? 'Change' : 'Select'),
             ),
           ),
-          ListTile(
-            title: const Text('Backup time'),
-            subtitle: Text(
-              timeSet ? _formatTime(settings.scheduledBackupTime!) : 'Not set',
-            ),
-            trailing: TextButton(
-              onPressed: _pickBackupTime,
-              child: Text(timeSet ? 'Change' : 'Set'),
-            ),
-          ),
           SwitchListTile(
             title: const Text('Auto backup'),
             subtitle: Text(
-              canAutoBackup
-                  ? 'Backs up daily at ${_formatTime(settings.scheduledBackupTime!)}'
-                  : 'Select a folder and time to enable',
+              folderSet
+                  ? 'Backs up automatically when you leave the app'
+                  : 'Select a folder to enable',
             ),
             value: settings.autoBackupEnabled,
-            onChanged: canAutoBackup
+            onChanged: folderSet
                 ? (val) =>
                     ref.read(settingsProvider.notifier).setAutoBackupEnabled(val)
                 : null,

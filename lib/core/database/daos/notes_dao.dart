@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../services/backup_dirty.dart';
 import '../app_database.dart';
 
 part 'notes_dao.g.dart';
@@ -42,14 +43,21 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
         .get();
   }
 
-  Future<void> insertNote(NotesCompanion note) => into(notes).insert(note);
+  Future<void> insertNote(NotesCompanion note) async {
+    await into(notes).insert(note);
+    BackupDirty.markDirty();
+  }
 
-  Future<void> updateNote(NotesCompanion note) =>
-      (update(notes)..where((n) => n.id.equals(note.id.value)))
-          .write(note);
+  Future<void> updateNote(NotesCompanion note) async {
+    await (update(notes)..where((n) => n.id.equals(note.id.value)))
+        .write(note);
+    BackupDirty.markDirty();
+  }
 
-  Future<void> deleteNote(String id) =>
-      (delete(notes)..where((n) => n.id.equals(id))).go();
+  Future<void> deleteNote(String id) async {
+    await (delete(notes)..where((n) => n.id.equals(id))).go();
+    BackupDirty.markDirty();
+  }
 
   Future<Note?> getNoteById(String id) =>
       (select(notes)..where((n) => n.id.equals(id))).getSingleOrNull();
@@ -72,5 +80,6 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
         );
       }
     });
+    BackupDirty.markDirty();
   }
 }

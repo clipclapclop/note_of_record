@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../services/backup_dirty.dart';
 import '../app_database.dart';
 
 part 'list_items_dao.g.dart';
@@ -21,18 +22,26 @@ class ListItemsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  Future<void> insertItem(ListItemsCompanion item) =>
-      into(listItems).insert(item);
+  Future<void> insertItem(ListItemsCompanion item) async {
+    await into(listItems).insert(item);
+    BackupDirty.markDirty();
+  }
 
-  Future<void> updateItem(ListItemsCompanion item) =>
-      (update(listItems)..where((i) => i.id.equals(item.id.value)))
-          .write(item);
+  Future<void> updateItem(ListItemsCompanion item) async {
+    await (update(listItems)..where((i) => i.id.equals(item.id.value)))
+        .write(item);
+    BackupDirty.markDirty();
+  }
 
-  Future<void> deleteItem(String id) =>
-      (delete(listItems)..where((i) => i.id.equals(id))).go();
+  Future<void> deleteItem(String id) async {
+    await (delete(listItems)..where((i) => i.id.equals(id))).go();
+    BackupDirty.markDirty();
+  }
 
-  Future<void> deleteItemsForNote(String noteId) =>
-      (delete(listItems)..where((i) => i.noteId.equals(noteId))).go();
+  Future<void> deleteItemsForNote(String noteId) async {
+    await (delete(listItems)..where((i) => i.noteId.equals(noteId))).go();
+    BackupDirty.markDirty();
+  }
 
   Future<List<ListItem>> searchItemsByContent(String query) {
     final q = '%$query%';
@@ -63,6 +72,7 @@ class ListItemsDao extends DatabaseAccessor<AppDatabase>
       ],
       updates: {listItems},
     );
+    BackupDirty.markDirty();
   }
 
   Future<void> updatePositions(
@@ -76,5 +86,6 @@ class ListItemsDao extends DatabaseAccessor<AppDatabase>
         );
       }
     });
+    BackupDirty.markDirty();
   }
 }

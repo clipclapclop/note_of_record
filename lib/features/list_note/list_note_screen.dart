@@ -96,6 +96,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
           ctx,
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
         );
       }
     });
