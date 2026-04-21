@@ -53,6 +53,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickFolder() async {
+    if (!await _ensureStoragePermission()) return;
     final path = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select backup folder',
     );
