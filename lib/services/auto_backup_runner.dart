@@ -1,30 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import 'backup_dirty.dart';
-import 'backup_service.dart';
 
-/// Runs a backup if auto-backup is configured and there are unsaved changes
-/// since the last backup. Called on `AppLifecycleState.paused`. Silent on
-/// failure — user sees last-backup timestamp in Settings.
-Future<void> maybeRunBackup(WidgetRef ref) async {
-  if (!BackupDirty.isDirty) return;
+/// Resolve the DB path and wire up [BackupDirty] so backups run immediately
+/// after every DB write. Call once during app startup.
+Future<void> initAutoBackup(ProviderContainer container) async {
+  final db = container.read(databaseProvider);
+  final rows = await db.customSelect('PRAGMA database_list').get();
+  final dbPath = rows.first.data['file'] as String;
 
-  final settings = ref.read(settingsProvider);
-  if (!settings.autoBackupEnabled || settings.backupFolderPath == null) return;
-
-  if (!await Permission.manageExternalStorage.isGranted) return;
-
-  try {
-    final db = ref.read(databaseProvider);
-    final rows = await db.customSelect('PRAGMA database_list').get();
-    final dbPath = rows.first.data['file'] as String;
-    await BackupService.backup(dbPath, settings.backupFolderPath!);
-    await ref.read(settingsProvider.notifier).recordBackupTime(DateTime.now());
-    BackupDirty.markClean();
-  } catch (_) {
-    // Silent — next paused event with dirty=true will retry.
-  }
+  BackupDirty.init(
+    dbPath: dbPath,
+    folderPathGetter: () =>
+        container.read(settingsProvider).backupFolderPath,
+    autoEnabledGetter: () =>
+        container.read(settingsProvider).autoBackupEnabled,
+    onBackupComplete: (time) async =>
+        container.read(settingsProvider.notifier).recordBackupTime(time),
+  );
 }

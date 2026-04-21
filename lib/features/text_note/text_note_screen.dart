@@ -21,17 +21,21 @@ class _TextNoteScreenState extends ConsumerState<TextNoteScreen> {
   Note? _note;
   bool _loaded = false;
 
+  /// Captured early so we can use it in [dispose] where [ref] is no longer
+  /// valid.
+  late final AppDatabase _db;
+
   @override
   void initState() {
     super.initState();
+    _db = ref.read(databaseProvider);
     _titleCtrl = TextEditingController();
     _bodyCtrl = TextEditingController();
     _loadNote();
   }
 
   Future<void> _loadNote() async {
-    final db = ref.read(databaseProvider);
-    final note = await db.notesDao.getNoteById(widget.noteId);
+    final note = await _db.notesDao.getNoteById(widget.noteId);
     if (note != null && mounted) {
       setState(() {
         _note = note;
@@ -48,8 +52,7 @@ class _TextNoteScreenState extends ConsumerState<TextNoteScreen> {
   }
 
   Future<void> _save() async {
-    final db = ref.read(databaseProvider);
-    await db.notesDao.updateNote(NotesCompanion(
+    await _db.notesDao.updateNote(NotesCompanion(
       id: Value(widget.noteId),
       title: Value(_titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim()),
       body: Value(_bodyCtrl.text.isEmpty ? null : _bodyCtrl.text),
@@ -87,7 +90,7 @@ class _TextNoteScreenState extends ConsumerState<TextNoteScreen> {
     final title = _titleCtrl.text.trim();
     final body = _bodyCtrl.text.trim();
     if (title.isEmpty && body.isEmpty) {
-      ref.read(databaseProvider).notesDao.deleteNote(widget.noteId);
+      _db.notesDao.deleteNote(widget.noteId);
     } else {
       _save();
     }

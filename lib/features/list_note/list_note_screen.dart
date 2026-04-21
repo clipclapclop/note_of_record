@@ -4,7 +4,6 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_of_record/core/database/app_database.dart';
-import 'package:note_of_record/providers/database_provider.dart';
 import 'package:note_of_record/providers/notes_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -27,9 +26,14 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   String? _lastAddedItemId;
   Timer? _titleDebounce;
 
+  /// Captured early so we can use it in [dispose] where [ref] is no longer
+  /// valid.
+  late final AppDatabase _db;
+
   @override
   void initState() {
     super.initState();
+    _db = _db;
     _titleCtrl = TextEditingController();
     _addItemCtrl = TextEditingController();
     _addItemFocus.addListener(_onAddItemFocusChange);
@@ -43,7 +47,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _loadTitle() async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     final note = await db.notesDao.getNoteById(widget.noteId);
     if (note != null && mounted) {
       _titleCtrl.text = note.title ?? '';
@@ -56,7 +60,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _saveTitle() async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     final title = _titleCtrl.text.trim();
     await db.notesDao.updateNote(NotesCompanion(
       id: Value(widget.noteId),
@@ -66,7 +70,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _touchNote() async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     await db.notesDao.updateNote(NotesCompanion(
       id: Value(widget.noteId),
       updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
@@ -76,7 +80,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   Future<void> _addItem() async {
     final content = _addItemCtrl.text;
     _addItemCtrl.clear();
-    final db = ref.read(databaseProvider);
+    final db = _db;
     final id = const Uuid().v4();
     final maxPos =
         await db.listItemsDao.getMaxPositionInGroup(widget.noteId, false);
@@ -103,7 +107,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _checkItem(ListItem item) async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     // Shift all existing checked items' positions down (make room at top)
     await db.listItemsDao.shiftPositions(widget.noteId, true, 0, 1);
     // Move item to top of checked group
@@ -116,7 +120,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _uncheckItem(ListItem item) async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     // Compact checked group after removing this item
     await db.listItemsDao
         .shiftPositions(widget.noteId, true, item.position + 1, -1);
@@ -132,7 +136,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _updateContent(String itemId, String content) async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     await db.listItemsDao.updateItem(ListItemsCompanion(
       id: Value(itemId),
       content: Value(content),
@@ -140,7 +144,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   }
 
   Future<void> _deleteItem(String itemId) async {
-    final db = ref.read(databaseProvider);
+    final db = _db;
     await db.listItemsDao.deleteItem(itemId);
     await _touchNote();
   }
@@ -151,7 +155,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
     final reordered = [...group];
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(newIndex, moved);
-    final db = ref.read(databaseProvider);
+    final db = _db;
     await db.listItemsDao.updatePositions([
       for (var i = 0; i < reordered.length; i++)
         (id: reordered[i].id, position: i),
@@ -177,7 +181,7 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final db = ref.read(databaseProvider);
+    final db = _db;
     await db.listItemsDao.deleteItemsForNote(widget.noteId);
     await db.notesDao.deleteNote(widget.noteId);
     if (mounted) Navigator.pop(context);
@@ -186,24 +190,48 @@ class _ListNoteScreenState extends ConsumerState<ListNoteScreen> {
   @override
   void dispose() {
     _titleDebounce?.cancel();
+
+    // Capture values before disposing controllers. Save / clean-up runs async
+    // after dispose returns — that's fine because _db outlives this widget.
     final title = _titleCtrl.text.trim();
-    final pendingItem = _addItemCtrl.text.trim();
-    final existingItems = ref.read(listItemsProvider(widget.noteId)).valueOrNull ?? [];
-    final isEmpty = title.isEmpty && pendingItem.isEmpty && existingItems.isEmpty;
-    if (isEmpty) {
-      ref.read(databaseProvider).notesDao.deleteNote(widget.noteId);
-    } else {
-      _saveTitle();
-      if (_addItemCtrl.text.isNotEmpty) {
-        _addItem();
-      }
-    }
+    final pendingText = _addItemCtrl.text;
+    final noteId = widget.noteId;
+
     _titleCtrl.dispose();
     _addItemCtrl.dispose();
     _addItemFocus.removeListener(_onAddItemFocusChange);
     _addItemFocus.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+
+    // Fire-and-forget cleanup using captured values (no ref, no controllers).
+    _disposeCleanup(noteId, title, pendingText);
+  }
+
+  Future<void> _disposeCleanup(
+      String noteId, String title, String pendingText) async {
+    // Add any pending item text before checking emptiness.
+    if (pendingText.isNotEmpty) {
+      final maxPos =
+          await _db.listItemsDao.getMaxPositionInGroup(noteId, false);
+      await _db.listItemsDao.insertItem(ListItemsCompanion.insert(
+        id: const Uuid().v4(),
+        noteId: noteId,
+        content: pendingText,
+        position: Value(maxPos + 1),
+      ));
+    }
+
+    final items = await _db.listItemsDao.watchItemsForNote(noteId).first;
+    if (title.isEmpty && items.isEmpty) {
+      await _db.notesDao.deleteNote(noteId);
+    } else {
+      await _db.notesDao.updateNote(NotesCompanion(
+        id: Value(noteId),
+        title: Value(title.isEmpty ? null : title),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ));
+    }
   }
 
   @override

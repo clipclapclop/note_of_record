@@ -172,7 +172,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('Auto backup'),
             subtitle: Text(
               folderSet
-                  ? 'Backs up automatically when you leave the app'
+                  ? 'Backs up automatically after changes'
                   : 'Select a folder to enable',
             ),
             value: settings.autoBackupEnabled,
