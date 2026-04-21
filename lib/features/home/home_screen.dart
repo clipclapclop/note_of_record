@@ -9,6 +9,7 @@ import 'package:note_of_record/features/settings/settings_screen.dart';
 import 'package:note_of_record/models/sort_mode.dart';
 import 'package:note_of_record/providers/database_provider.dart';
 import 'package:note_of_record/providers/notes_provider.dart';
+import 'package:note_of_record/services/backup_dirty.dart';
 import 'package:note_of_record/providers/sort_mode_provider.dart';
 import 'package:note_of_record/providers/view_mode_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -19,17 +20,10 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   void _openNote(BuildContext context, Note note) {
-    if (note.type == 'text') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => TextNoteScreen(noteId: note.id)),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ListNoteScreen(noteId: note.id)),
-      );
-    }
+    final route = note.type == 'text'
+        ? MaterialPageRoute(builder: (_) => TextNoteScreen(noteId: note.id))
+        : MaterialPageRoute(builder: (_) => ListNoteScreen(noteId: note.id));
+    Navigator.push(context, route).then((_) => BackupDirty.backupIfDirty());
   }
 
   Future<void> _createNote(BuildContext context, WidgetRef ref) async {
@@ -53,17 +47,10 @@ class HomeScreen extends ConsumerWidget {
     ));
 
     if (!context.mounted) return;
-    if (type == 'text') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => TextNoteScreen(noteId: id)),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ListNoteScreen(noteId: id)),
-      );
-    }
+    final route = type == 'text'
+        ? MaterialPageRoute(builder: (_) => TextNoteScreen(noteId: id))
+        : MaterialPageRoute(builder: (_) => ListNoteScreen(noteId: id));
+    Navigator.push(context, route).then((_) => BackupDirty.backupIfDirty());
   }
 
   Future<void> _deleteNote(
@@ -89,6 +76,7 @@ class HomeScreen extends ConsumerWidget {
     final db = ref.read(databaseProvider);
     await db.listItemsDao.deleteItemsForNote(note.id);
     await db.notesDao.deleteNote(note.id);
+    await BackupDirty.backupIfDirty();
   }
 
   @override

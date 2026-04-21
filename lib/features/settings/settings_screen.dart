@@ -177,8 +177,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             value: settings.autoBackupEnabled,
             onChanged: folderSet
-                ? (val) =>
-                    ref.read(settingsProvider.notifier).setAutoBackupEnabled(val)
+                ? (val) async {
+                    if (val && !await _ensureStoragePermission()) return;
+                    ref.read(settingsProvider.notifier).setAutoBackupEnabled(val);
+                  }
                 : null,
           ),
           ListTile(
